@@ -15,12 +15,10 @@ GitHub Repository URL:
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>About Us - Your eCommerce Store</title>
+    <title>Categories - WEB322 Store</title>
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -56,25 +54,20 @@ GitHub Repository URL:
             font-size: 1.5rem;
         }
 
-        /* About Section */
-        .about-section {
+        /* Categories Section */
+        .categories-section {
             padding: 60px 0;
         }
 
-        .about-section h2 {
+        .categories-section h2 {
             font-weight: bold;
             margin-bottom: 30px;
+            color: #343a40;
         }
 
-        .about-section p {
+        .categories-section p {
             font-size: 1.1rem;
             line-height: 1.8;
-        }
-
-        /* Core Values */
-        .values-section h3 {
-            margin-top: 40px;
-            margin-bottom: 20px;
         }
 
         /* Footer */
@@ -99,13 +92,13 @@ GitHub Repository URL:
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item active">
+                    <li class="nav-item">
                         <a class="nav-link" href="/about">About Us</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/shop">Shop</a>
-                    </li>                    
-                    <li class="nav-item">
+                    </li>
+                    <li class="nav-item active">
                         <a class="nav-link" href="/categories">Categories</a>
                     </li>
                 </ul>
@@ -116,37 +109,21 @@ GitHub Repository URL:
     <!-- Hero Section -->
     <section class="hero">
         <div class="container text-center">
-            <h1>Welcome to the Web-322 store!</h1>
-            <p>Where quality meets convenience</p>
+            <h1>Explore Our Categories!</h1>
+            <p>Find products by category</p>
         </div>
     </section>
 
-    <!-- About Section -->
-    <section class="about-section">
+    <!-- Categories Section -->
+    <section class="categories-section">
         <div class="container">
-            <div class="row">
-                <!-- About Us -->
-                <div class="col-md-8">
-                    <h2>About Us</h2>
-                    <p>Welcome to <strong>WEB322 store</strong>, your number one source for essentials. We're dedicated to giving you the very best shopping experience, with a focus on quality, customer service, and uniqueness.</p>
-                    <p>Founded in 2020, <strong>the WEB322 store</strong> has come a long way from its beginnings in SanFransisco. When we first started out, our passion for [what inspired you] drove us to start this business, so that <strong>we</strong> can offer you the best products. We now serve customers all over Canada, and are thrilled to be a part of your daily needs.</p>
-                    <p>We hope you enjoy our products as much as we enjoy offering them to you. If you have any questions or comments, please don't hesitate to contact us.</p>
-                </div>
-
-                <!-- Core Values -->
-                <div class="col-md-4">
-                    <h2>Our Core Values</h2>
-                    <div class="values-section">
-                        <h3>Quality</h3>
-                        <p>We ensure our products are of the highest quality, sourced from the best manufacturers.</p>
-
-                        <h3>Customer Satisfaction</h3>
-                        <p>Your happiness is our top priority, and we strive to exceed your expectations.</p>
-
-                        <h3>Integrity</h3>
-                        <p>We believe in transparency, honesty, and building trust with our customers.</p>
-                    </div>
-                </div>
+            <h2>Categories</h2>
+            <div class="list-group">
+                <% categories.forEach(category => { %>
+                    <a href="/category/<%= category.id %>" class="list-group-item list-group-item-action">
+                        <%= category.category %>
+                    </a>
+                <% }) %>
             </div>
         </div>
     </section>
@@ -161,5 +138,4 @@ GitHub Repository URL:
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>

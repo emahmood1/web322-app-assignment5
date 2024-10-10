@@ -1,20 +1,34 @@
-const fs = require("fs");
+/*********************************************************************************
 
+WEB322 – Assignment 02
+I declare that this assignment is my own work in accordance with Seneca Academic Policy. 
+No part of this assignment has been copied manually or electronically from any other source 
+(including 3rd party web sites) or distributed to other students.
+
+Name: Ehsan Mahmood
+Student ID: 115028227
+Date: 09/10/2024
+Repl.it Web App URL: 
+GitHub Repository URL: 
+
+********************************************************************************/
+
+const fs = require('fs');
 let items = [];
 let categories = [];
 
-module.exports.initialize = () => {
+function initialize() {
     return new Promise((resolve, reject) => {
-        fs.readFile("./data/items.json", "utf8", (err, data) => {
+        fs.readFile('./data/items.json', 'utf8', (err, data) => {
             if (err) {
-                reject("Unable to read items file");
+                reject('unable to read items file');
                 return;
             }
             items = JSON.parse(data);
 
-            fs.readFile("./data/categories.json", "utf8", (err, data) => {
+            fs.readFile('./data/categories.json', 'utf8', (err, data) => {
                 if (err) {
-                    reject("Unable to read categories file");
+                    reject('unable to read categories file');
                     return;
                 }
                 categories = JSON.parse(data);
@@ -22,35 +36,37 @@ module.exports.initialize = () => {
             });
         });
     });
-};
+}
 
-module.exports.getAllItems = () => {
+function getAllItems() {
     return new Promise((resolve, reject) => {
-        if (items.length > 0) {
+        if (items.length === 0) {
+            reject('no results returned');
+        } else {
             resolve(items);
-        } else {
-            reject("No items found");
         }
     });
-};
+}
 
-module.exports.getPublishedItems = () => {
+function getPublishedItems() {
     return new Promise((resolve, reject) => {
-        const publishedItems = items.filter(item => item.published);
-        if (publishedItems.length > 0) {
+        const publishedItems = items.filter(item => item.published === true);
+        if (publishedItems.length === 0) {
+            reject('no results returned');
+        } else {
             resolve(publishedItems);
-        } else {
-            reject("No published items found");
         }
     });
-};
+}
 
-module.exports.getCategories = () => {
+function getCategories() {
     return new Promise((resolve, reject) => {
-        if (categories.length > 0) {
-            resolve(categories);
+        if (categories.length === 0) {
+            reject('no results returned');
         } else {
-            reject("No categories found");
+            resolve(categories);
         }
     });
-};
+}
+
+module.exports = { initialize, getAllItems, getPublishedItems, getCategories };
