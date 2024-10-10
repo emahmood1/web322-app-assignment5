@@ -1,0 +1,13 @@
+/* Simple CSS for basic styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+}
+
+h2 {
+    color: #007bff;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
