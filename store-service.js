@@ -1,17 +1,18 @@
 /*********************************************************************************
 
-WEB322 – Assignment 02
+WEB322 – Assignment 03
 I declare that this assignment is my own work in accordance with Seneca Academic Policy. 
 No part of this assignment has been copied manually or electronically from any other source 
 (including 3rd party web sites) or distributed to other students.
 
 Name: Ehsan Mahmood
 Student ID: 115028227
-Date: 09/10/2024
+Date: 30/10/2024
 Repl.it Web App URL: 
 GitHub Repository URL: 
 
 ********************************************************************************/
+
 
 const fs = require('fs');
 let items = [];
@@ -59,14 +60,13 @@ function getPublishedItems() {
     });
 }
 
-function getCategories() {
+function addItem(itemData) {
     return new Promise((resolve, reject) => {
-        if (categories.length === 0) {
-            reject('no results returned');
-        } else {
-            resolve(categories);
-        }
+        itemData.id = items.length + 1;
+        itemData.published = itemData.published || false;
+        items.push(itemData);
+        resolve();
     });
 }
 
-module.exports = { initialize, getAllItems, getPublishedItems, getCategories };
+module.exports = { initialize, getAllItems, getPublishedItems, addItem };
