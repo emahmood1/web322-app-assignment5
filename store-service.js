@@ -1,5 +1,4 @@
-/*
-    WEB322 – Assignment 05
+/*  WEB322 – Assignment 05
     I declare that this assignment is my own work in accordance with Seneca Academic Policy.
     No part of this assignment has been copied manually or electronically from any other source 
     (including 3rd party web sites) or distributed to other students.
@@ -7,9 +6,9 @@
     Name: Ehsan Mahmood
     Student ID: 115028227
     Date: 01/12/2024
-    Repl.it Web App URL: not updated yet on vercel cause deployed in vercel first
-    GitHub Repository URL: not updated yet on vercel cause deployed in vercel first 
-*/
+    Repl.it Web App URL: https://replit.com/@ehsanmahmood202/web322-app-assignment5
+    GitHub Repository URL: https://github.com/emahmood1/web322-app-assignment5
+    */
 const Sequelize = require('sequelize');
 
 // Explicitly set the connection string
