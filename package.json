@@ -11,6 +11,8 @@
   "description": "",
   "dependencies": {
     "@handlebars/allow-prototype-access": "^1.0.5",
+    "bcryptjs": "^2.4.3",
+    "client-sessions": "^0.8.0",
     "cloudinary": "^2.5.1",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",

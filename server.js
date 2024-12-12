@@ -1,315 +1,198 @@
-/*  WEB322 – Assignment 05
-    I declare that this assignment is my own work in accordance with Seneca Academic Policy.
-    No part of this assignment has been copied manually or electronically from any other source 
-    (including 3rd party web sites) or distributed to other students.
-    
-    Name: Ehsan Mahmood
-    Student ID: 115028227
-    Date: 01/12/2024
-    Repl.it Web App URL: https://replit.com/@ehsanmahmood202/web322-app-assignment5
-    GitHub Repository URL: https://github.com/emahmood1/web322-app-assignment5
-    */
-
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const storeService = require('./store-service');
+const authData = require('./auth-service');
 const session = require('express-session');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
-const dotenv = require('dotenv');
 const exphbs = require('express-handlebars');
-
-// Enable prototype property access
+const clientSessions = require('client-sessions');
 const { allowInsecurePrototypeAccess } = require('@handlebars/allow-prototype-access');
 const handlebars = require('handlebars');
-
-
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Handlebars setup
-
 app.engine(
-    '.hbs',
-    exphbs.engine({
-        extname: '.hbs',
-        defaultLayout: 'main',
-        helpers: {
-            navLink: function (url, options) {
-                return (
-                    '<li class="nav-item">' +
-                    '<a class="nav-link ' +
-                    (url === app.locals.activeRoute ? 'active' : '') +
-                    '" href="' +
-                    url +
-                    '">' +
-                    options.fn(this) +
-                    '</a></li>'
-                );
-            },
-            formatDate: function (dateObj) {
-                let year = dateObj.getFullYear();
-                let month = (dateObj.getMonth() + 1).toString();
-                let day = dateObj.getDate().toString();
-                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            },
-        },
-        handlebars: allowInsecurePrototypeAccess(handlebars), // Enable access
-    })
+  '.hbs',
+  exphbs.engine({
+    extname: '.hbs',
+    defaultLayout: 'main',
+    helpers: {
+      navLink: function (url, options) {
+        return (
+          `<li class="nav-item">
+            <a class="nav-link ${url === app.locals.activeRoute ? 'active' : ''}" href="${url}">
+              ${options.fn(this)}
+            </a>
+          </li>`
+        );
+      },
+    },
+    handlebars: allowInsecurePrototypeAccess(handlebars),
+  })
 );
 app.set('view engine', '.hbs');
 app.set('views', path.join(__dirname, 'views'));
 
+// Middleware
+app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
+app.use(clientSessions({
+  cookieName: 'session',
+  secret: process.env.SESSION_SECRET || 'defaultSecret',
+  duration: 24 * 60 * 60 * 1000,
+  activeDuration: 1000 * 60 * 5,
+}));
 
-require('dotenv').config();
-
-
+// Make session available in views
+app.use((req, res, next) => {
+  res.locals.session = req.session;
+  app.locals.activeRoute = `/${req.path.split('/')[1]}`;
+  next();
+});
 
 // Configure Cloudinary
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Middleware to determine the active route
-app.use((req, res, next) => {
-    const route = req.path.split('/')[1] || '';
-    app.locals.activeRoute = `/${route}`;
-    next();
-});
-
-
-// Serve static files
-app.use(express.static('public'));
-app.use(express.urlencoded({ extended: true }));
-
-// Enable sessions
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET || 'defaultSecret',
-        resave: false,
-        saveUninitialized: true,
-    })
-);
-
-// Initialize the cart if it doesn't exist
-app.use((req, res, next) => {
-    if (!req.session.cart) {
-        req.session.cart = [];
-    }
-    next();
-});
-
-// Debugging Middleware (Optional)
-app.use((req, res, next) => {
-    console.log('Session Cart:', req.session.cart);
-    next();
-});
-
-// Configure Multer
+// Multer for file uploads
 const upload = multer();
 
+// Ensure Login Middleware
+function ensureLogin(req, res, next) {
+  if (!req.session.user) {
+    res.redirect('/login');
+  } else {
+    next();
+  }
+}
 
-//Routes
-app.get('/', (req, res) => {
-    res.redirect('/shop');
+// Routes
+app.get('/', (req, res) => res.redirect('/shop'));
+
+app.get('/about', (req, res) => res.render('about', { title: 'About Us' }));
+
+// Register and Login Routes
+app.get('/register', (req, res) => res.render('register', { title: 'Register' }));
+
+app.post('/register', (req, res) => {
+  authData.registerUser(req.body)
+    .then(() => res.render('register', { successMessage: 'User created successfully!', title: 'Register' }))
+    .catch(err => res.render('register', { errorMessage: err, userName: req.body.userName, title: 'Register' }));
 });
 
+app.get('/login', (req, res) => res.render('login', { title: 'Login' }));
 
-app.get('/about', (req, res) => {
-    res.render('about', { title: 'About Us' });
+app.post('/login', (req, res) => {
+  req.body.userAgent = req.get('User-Agent');
+  authData.checkUser(req.body)
+    .then(user => {
+      req.session.user = {
+        userName: user.userName,
+        email: user.email,
+        loginHistory: user.loginHistory,
+      };
+      res.redirect('/shop');
+    })
+    .catch(err => res.render('login', { errorMessage: err, userName: req.body.userName, title: 'Login' }));
 });
 
+app.get('/logout', (req, res) => {
+  req.session.reset();
+  res.redirect('/login');
+});
+
+app.get('/userHistory', ensureLogin, (req, res) => {
+  res.render('userHistory', { user: req.session.user, title: 'User History' });
+});
+
+// Shop Routes
 app.get('/shop', (req, res) => {
-    const category = req.query.category || null;
-
-    let viewData = {
-        post: null,
-        posts: [],
-        categories: [],
-        message: null,
-        categoriesMessage: null
-    };
-
-    storeService.getPublishedItems()
-        .then((posts) => {
-            viewData.posts = posts;
-            if (category) {
-                return storeService.getPublishedItemsByCategory(category);
-            } else {
-                return Promise.resolve([]);
-            }
-        })
-        .then((filteredPosts) => {
-            if (filteredPosts.length > 0) {
-                viewData.post = filteredPosts[0];
-            }
-            return storeService.getCategories();
-        })
-        .then((categories) => {
-            viewData.categories = categories;
-        })
-        .catch((err) => {
-            viewData.message = err;
-        })
-        .finally(() => {
-            res.render('shop', viewData);
-        });
-
-        console.log("Fetched posts:", viewData.posts);
-console.log("Selected post:", viewData.post);
-console.log("Categories:", viewData.categories);
-
+  let viewData = { posts: [], categories: [] };
+  storeService.getPublishedItems()
+    .then(posts => {
+      viewData.posts = posts;
+      return storeService.getCategories();
+    })
+    .then(categories => {
+      viewData.categories = categories;
+      res.render('shop', viewData);
+    })
+    .catch(err => res.render('shop', { message: 'Error loading shop.', error: err }));
 });
-
-
 
 app.get('/shop/:id', (req, res) => {
-    const itemId = req.params.id;
-
-    let viewData = {
-        post: null,
-        posts: [],
-        categories: [],
-        message: null,
-        categoriesMessage: null
-    };
-
-    storeService.getPublishedItems()
-        .then((posts) => {
-            viewData.posts = posts;
-            return storeService.getCategories();
-        })
-        .then((categories) => {
-            viewData.categories = categories;
-            return storeService.getAllItems();
-        })
-        .then((allItems) => {
-            const item = allItems.find((item) => item.id == itemId);
-            if (item) {
-                viewData.post = item;
-            } else {
-                viewData.message = "Item not found.";
-            }
-        })
-        .catch((err) => {
-            viewData.message = "Error loading the requested item.";
-        })
-        .finally(() => {
-            res.render('shop', viewData);
-        });
+  const itemId = req.params.id;
+  let viewData = { post: null, posts: [], categories: [] };
+  storeService.getPublishedItems()
+    .then(posts => {
+      viewData.posts = posts;
+      return storeService.getCategories();
+    })
+    .then(categories => {
+      viewData.categories = categories;
+      return storeService.getAllItems();
+    })
+    .then(allItems => {
+      viewData.post = allItems.find(item => item.id == itemId) || null;
+      res.render('shop', viewData);
+    })
+    .catch(err => res.render('shop', { message: 'Error loading item.', error: err }));
 });
 
-
-app.get('/items', (req, res) => {
-    storeService.getAllItems()
-        .then((items) => {
-            if (items.length > 0) {
-                res.render('items', { title: 'Items', items });
-            } else {
-                res.render('items', { title: 'Items', message: 'No results' });
-            }
-        })
-        .catch(() => {
-            res.render('items', { title: 'Items', message: 'Error retrieving items' });
-        });
+// Item Routes
+app.get('/items', ensureLogin, (req, res) => {
+  storeService.getAllItems()
+    .then(items => res.render('items', { items, title: 'Items' }))
+    .catch(() => res.render('items', { message: 'No items found.', title: 'Items' }));
 });
 
-// Route to delete an item by ID
-app.get('/items/delete/:id', (req, res) => {
-    storeService.deleteItemById(req.params.id)
-        .then(() => res.redirect('/items'))
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Unable to Remove Item / Item not found");
-        });
+app.get('/items/add', ensureLogin, (req, res) => {
+  storeService.getCategories()
+    .then(categories => res.render('addPost', { title: 'Add Items', categories }))
+    .catch(() => res.render('addPost', { title: 'Add Items', categories: [] }));
 });
 
+app.post('/items/add', ensureLogin, upload.single('featureImage'), (req, res) => {
+  const processItem = (imageUrl) => {
+    req.body.featureImage = imageUrl;
+    storeService.addItem(req.body)
+      .then(() => res.redirect('/items'))
+      .catch(err => res.status(500).json({ message: 'Failed to add item', error: err }));
+  };
 
+  if (req.file) {
+    const streamUpload = (req) => new Promise((resolve, reject) => {
+      let stream = cloudinary.uploader.upload_stream((error, result) => {
+        if (result) resolve(result);
+        else reject(error);
+      });
+      streamifier.createReadStream(req.file.buffer).pipe(stream);
+    });
 
-app.get('/categories', (req, res) => {
-    storeService.getCategories()
-        .then((categories) => {
-            if (categories.length > 0) {
-                res.render('categories', { title: 'Categories', categories });
-            } else {
-                res.render('categories', { title: 'Categories', message: 'No results' });
-            }
-        })
-        .catch(() => {
-            res.render('categories', { title: 'Categories', message: 'Error retrieving categories' });
-        });
-});
-// Route to render the addCategory view
-
-app.get('/categories/add', (req, res) => {
-    res.render('addCategory', { title: 'Add Category' });
-});
-
-// Route to handle adding a new category
-app.post('/categories/add', (req, res) => {
-    storeService.addCategory(req.body)
-        .then(() => res.redirect('/categories'))
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Unable to add category");
-        });
+    streamUpload(req)
+      .then(uploaded => processItem(uploaded.url))
+      .catch(() => res.status(500).json({ message: 'Image upload failed' }));
+  } else {
+    processItem('');
+  }
 });
 
-
-app.get('/items/add', (req, res) => {
-    storeService.getCategories()
-        .then((categories) => {
-            res.render('addPost', { title: 'Add Items', categories });
-        })
-        .catch(() => {
-            res.render('addPost', { title: 'Add Items', categories: [] });
-        });
+app.get('/items/delete/:id', ensureLogin, (req, res) => {
+  storeService.deleteItemById(req.params.id)
+    .then(() => res.redirect('/items'))
+    .catch(() => res.status(500).send('Unable to Remove Item / Item not found'));
 });
 
-// Route for Adding a New Item with Cloudinary
-app.post('/items/add', upload.single('featureImage'), (req, res) => {
-    const processItem = (imageUrl) => {
-        req.body.featureImage = imageUrl;
-        storeService
-            .addItem(req.body)
-            .then(() => {
-                res.redirect('/items');
-            })
-            .catch((err) => {
-                res.status(500).json({ message: 'Failed to add item', error: err });
-            });
-    };
-
-    if (req.file) {
-        const streamUpload = (req) => {
-            return new Promise((resolve, reject) => {
-                let stream = cloudinary.uploader.upload_stream((error, result) => {
-                    if (result) {
-                        resolve(result);
-                    } else {
-                        reject(error);
-                    }
-                });
-                streamifier.createReadStream(req.file.buffer).pipe(stream);
-            });
-        };
-
-        streamUpload(req)
-            .then((uploaded) => {
-                processItem(uploaded.url);
-            })
-            .catch(() => {
-                res.status(500).json({ message: 'Image upload failed' });
-            });
-    } else {
-        processItem('');
-    }
-});
+//cart routes
+// Route for Adding Items to Cart
 
 // Route to view the cart
 app.get('/cart', (req, res) => {
@@ -318,7 +201,6 @@ app.get('/cart', (req, res) => {
     res.render('cart', { title: 'Your Cart', cartItems, total });
 });
 
-// Route for Adding Items to Cart
 app.post('/cart/add', (req, res) => {
     if (!req.session.cart) req.session.cart = [];
     const { itemId, itemName, itemPrice } = req.body;
@@ -333,68 +215,55 @@ app.post('/cart/add', (req, res) => {
     res.redirect('/cart'); // Redirect to the cart page after adding an item
 });
 
+app.post('/cart/checkout', ensureLogin, (req, res) => {
+    // Clear the cart after checkout
+    req.session.cart = [];
+    res.render('checkout', { message: 'Thank you for your purchase!', title: 'Checkout' });
+  });
 
-// Route for Checkout
-app.post('/cart/checkout', (req, res) => {
-    res.render('checkout', { message: 'Thank you for your purchase!' });
+  
+
+// Category Routes
+app.get('/categories', ensureLogin, (req, res) => {
+  storeService.getCategories()
+    .then(categories => res.render('categories', { categories, title: 'Categories' }))
+    .catch(() => res.render('categories', { message: 'Error retrieving categories', title: 'Categories' }));
 });
 
-// Route for Viewing Cart
-app.get('/cart', (req, res) => {
-    const cartItems = req.session.cart || [];
-    const total = cartItems.reduce((sum, item) => sum + item.price, 0);
-    res.render('cart', { cartItems, total });
+app.get('/categories/add', ensureLogin, (req, res) => {
+  res.render('addCategory', { title: 'Add Category' });
 });
 
-app.get('/categories', (req, res) => {
-    storeService.getCategories()
-        .then((categories) => {
-            if (categories.length > 0) {
-                res.render('categories', { title: 'Categories', categories });
-            } else {
-                res.render('categories', { title: 'Categories', message: 'No results' });
-            }
-        })
-        .catch(() => {
-            res.render('categories', { title: 'Categories', message: 'Error retrieving categories' });
-        });
+app.post('/categories/add', ensureLogin, (req, res) => {
+  storeService.addCategory(req.body)
+    .then(() => res.redirect('/categories'))
+    .catch(() => res.status(500).send('Unable to add category'));
 });
 
+app.get('/categories/delete/:id', ensureLogin, (req, res) => {
+  storeService.deleteCategoryById(req.params.id)
+    .then(() => res.redirect('/categories'))
+    .catch(() => res.status(500).send('Unable to Remove Category / Category not found'));
+});
 
-
-app.get('/category/:id', (req, res) => {
-    const categoryId = parseInt(req.params.id, 10);
-
-    storeService.getAllItems().then((items) => {
-        const filteredItems = items.filter(item => item.category === categoryId);
-        res.render('categoryProducts', { items: filteredItems });
-    }).catch((err) => {
-        res.status(500).json({ message: 'Failed to load category products', error: err });
+// Protected route for User History
+app.get('/userHistory', ensureLogin, (req, res) => {
+    res.render('userHistory', {
+        user: req.session.user, // Pass the user object from session
+        title: 'User History'
     });
 });
 
-// Route to delete a category by ID
-app.get('/categories/delete/:id', (req, res) => {
-    storeService.deleteCategoryById(req.params.id)
-        .then(() => res.redirect('/categories'))
-        .catch((err) => {
-            console.error(err);
-            res.status(500).send("Unable to Remove Category / Category not found");
-        });
-});
 
-
-
-
+// Catch-all for 404 errors
 app.use((req, res) => {
-    res.status(404).render('404', { message: 'Page Not Found' });
+  res.status(404).render('404', { message: 'Page Not Found' });
 });
 
+// Server Initialization
 storeService.initialize()
-    .then(() => {
-        app.listen(PORT, () => {
-            console.log(`Server is listening on port ${PORT}`);
-        });
-    })
-    .catch(err => console.log(err));
-
+  .then(authData.initialize)
+  .then(() => {
+    app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+  })
+  .catch(err => console.log(`Unable to start server: ${err}`));
